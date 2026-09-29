@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slash Recall v1.0 | 爆速コピペ音声暗記ツール</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* スクロールバーのカスタマイズ */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans antialiased min-h-screen flex flex-col">
+
+    <!-- ヘッダー -->
+    <header class="bg-indigo-600 text-white py-4 shadow-md sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto px-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <svg class="w-8 h-8 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">Slash Recall <span class="text-sm font-normal opacity-80 ml-1">v1.0</span></h1>
+                    <p class="text-xs text-indigo-200 mt-0.5">爆速コピペ音声暗記ツール</p>
+                </div>
+            </div>
+            
+            <!-- 使い方ボタン -->
+            <button onclick="openHelp()" class="flex items-center gap-1.5 text-sm bg-indigo-700 hover:bg-indigo-800 px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-bold shadow-sm transition-colors border border-indigo-500">
+                <svg class="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                <span class="hidden md:inline">使い方を見る</span>
+                <span class="inline md:hidden">使い方</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="flex-grow max-w-5xl w-full mx-auto p-4 flex flex-col gap-6 pb-12">
+        
+        <!-- 1. 入力エリア -->
+        <section id="input-section" class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+            <label class="block text-gray-700 font-bold mb-2 flex items-center gap-2" for="code-input">
+                <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                テキストまたはコードを入力 // 解説や答え
+            </label>
+            <textarea id="code-input" class="w-full h-80 p-4 bg-gray-50 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-shadow resize-y leading-relaxed" placeholder="問題 // 答え の形式で入力してください..."></textarea>
+            
+            <div class="mt-4 flex justify-end">
+                <button onclick="parseAndStart()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-2.5 rounded-lg font-bold shadow-md transition-all flex items-center gap-2 transform active:scale-95 text-lg">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                    スタート
+                </button>
+            </div>
+        </section>
+
+        <!-- 2. メイン表示エリア (初期状態は非表示) -->
+        <section id="viewer-section" class="hidden flex-col gap-5">
+            
+            <!-- コントロールバー -->
+            <div class="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 sticky top-20 z-40">
+                
+                <!-- モード切替 -->
+                <div class="flex items-center gap-1 bg-gray-100 p-1.5 rounded-lg">
+                    <button id="mode-hide-code" onclick="setMode('hide-code')" class="flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-200 transition-all">
+                        テキスト(左)を隠す
+                    </button>
+                    <button id="mode-hide-comments" onclick="setMode('hide-comments')" class="flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-bold bg-white shadow-sm text-indigo-600 transition-all">
+                        解説(右)を隠す
+                    </button>
+                </div>
+                
+                <!-- アクションボタン -->
+                <div class="flex items-center justify-between md:justify-end gap-3 flex-wrap">
+                    <div class="flex gap-2">
+                        <button id="toggle-all-btn" onclick="toggleAllRevealed()" class="text-sm px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-bold transition-colors flex items-center gap-1 shrink-0">
+                            すべて表示
+                        </button>
+                        <button onclick="clearSelection()" class="text-sm px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-bold transition-colors flex items-center gap-1 shrink-0" title="チェックした選択をすべて解除">
+                            選択解除
+                        </button>
+                    </div>
+                    
+                    <div class="hidden md:block w-px h-8 bg-gray-300"></div>
+                    
+                    <!-- 再生コントロール群 -->
+                    <div class="flex items-center gap-3 bg-gray-50 px-2 py-1 rounded-lg border border-gray-200">
+                        
+                        <!-- 速度調整 -->
+                        <select id="playback-rate" class="text-sm font-bold text-gray-700 bg-transparent border-none focus:ring-0 cursor-pointer outline-none pl-1">
+                            <option value="1.0">1.0倍速</option>
+                            <option value="1.5">1.5倍速</option>
+                            <option value="2.0">2.0倍速</option>
+                        </select>
+
+                        <div class="w-px h-5 bg-gray-300"></div>
+
+                        <!-- ループ -->
+                        <label class="flex items-center gap-1 text-sm font-bold text-gray-700 cursor-pointer shrink-0">
+                            <input type="checkbox" id="loop-toggle" class="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer">
+                            ループ
+                        </label>
+                        
+                        <div class="w-px h-5 bg-gray-300"></div>
+
+                        <!-- 連続再生・停止 -->
+                        <div class="flex gap-1.5">
+                            <button onclick="playAll()" class="text-sm px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md font-bold shadow transition-colors flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
+                                連続再生
+                            </button>
+                            <button onclick="stopPlay()" class="text-sm px-2 py-1.5 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors" title="読み上げ停止">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clip-rule="evenodd"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- カード表示コンテナ -->
+            <div id="cards-container" class="flex flex-col gap-3">
+                <!-- JSで動的にカードが挿入されます -->
+            </div>
+        </section>
+    </main>
+
+    <!-- フッター -->
+    <footer class="bg-gray-800 text-gray-400 py-8 text-center text-sm mt-auto leading-relaxed">
+        <div class="max-w-5xl mx-auto px-4 flex flex-col gap-4">
+            <div class="opacity-80 text-xs md:text-sm">
+                <p class="font-bold mb-1">【ご利用・共有について】</p>
+                <p>個人での学習利用やSNS等での紹介は大歓迎です！</p>
+                <p>アプリを共有・紹介される際は、制作者（Watari Takuya）の表記をお願いいたします。</p>
+                <p class="mt-1">※ 無断での複製・二次配布・商用利用はご遠慮ください。</p>
+            </div>
+            <p class="mt-2 text-gray-500 font-mono text-xs md:text-sm">&copy; 2026 Watari Takuya. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- 使い方モーダル (ポップアップ) -->
+    <div id="help-modal" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="help-modal-content">
+            <!-- モーダルヘッダー -->
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                    Slash Recall の使い方
+                </h2>
+                <button onclick="closeHelp()" class="text-gray-500 hover:text-gray-800 hover:bg-gray-200 p-1.5 rounded-lg transition-colors focus:outline-none">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <!-- モーダルボディ -->
+            <div class="p-6 overflow-y-auto flex-1 text-gray-700 text-sm leading-relaxed space-y-8">
+                
+                <!-- はじめに -->
+                <div class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg shadow-sm">
+                    <h3 class="font-bold text-yellow-800 mb-2 flex items-center gap-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        💡 まずは試してみよう！
+                    </h3>
+                    <p class="text-xs text-yellow-900 mb-3 leading-relaxed">
+                        最初から入力欄にサンプルのコードが入っています。そのまま「<span class="font-bold bg-indigo-600 text-white px-1.5 py-0.5 rounded">▶ スタート</span>」ボタンを押して動作を体験してみてください。<br>
+                        スタート後は、任意の行を再生したり、「連続再生」したり、選択した行だけを「ループ」させることができます。
+                    </p>
+                    <div class="border-t border-yellow-200 pt-3">
+                        <p class="font-bold text-yellow-800 text-xs mb-1">📝 自分でテキストを入れるときは…</p>
+                        <p class="text-xs text-yellow-900 leading-relaxed">
+                            自分で入力・コピペするときは、入力欄をクリックし、<kbd class="bg-white border border-yellow-300 px-1.5 py-0.5 rounded shadow-sm">Ctrl + A</kbd>（Macは <kbd class="bg-white border border-yellow-300 px-1.5 py-0.5 rounded shadow-sm">Cmd + A</kbd>）を押して今ある文字を<span class="font-bold text-red-600">全部選択して消してから</span>、貼り付けてください。<br>
+                            【 <span class="font-bold">コピペ</span> ➡ <span class="font-bold">スタート</span> ➡ <span class="font-bold">連続再生 or 選択ループ</span> 】のリズムで学習を進めましょう！
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 基本ルール -->
+                <div>
+                    <h3 class="text-indigo-600 font-bold mb-3 text-base border-b-2 border-indigo-100 inline-block">🎯 基本ルール</h3>
+                    <p class="font-bold bg-indigo-50 p-3 rounded-lg border border-indigo-100 text-indigo-900 mb-3">
+                        入力欄に 「問題 <span class="text-indigo-500 mx-1">//</span> 答え」 の形式で入力するだけ！
+                    </p>
+                    <p class="text-xs text-gray-600 ml-1">※「テキストを隠す」「解説を隠す」ボタンで、クイズ形式の学習ができます。</p>
+                </div>
+
+                <!-- AIを使った最強フロー -->
+                <div>
+                    <h3 class="text-indigo-600 font-bold mb-3 text-base border-b-2 border-indigo-100 inline-block">🤖 AIを使った超効率・学習フロー</h3>
+                    <p class="mb-3 text-xs text-gray-600">ChatGPTなどのAIに教材を作らせて、このツールで反復学習するのが最もオススメの使い方です！</p>
+                    
+                    <div class="space-y-4">
+                        <!-- Step 1 -->
+                        <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm">
+                            <p class="font-bold text-gray-800 mb-2"><span class="bg-indigo-600 text-white px-2 py-0.5 rounded text-xs mr-2">Step 1</span>AIに指示（プロンプト）を出す</p>
+                            <p class="text-xs text-gray-600 mb-2">以下の文章と、覚えたいコードをAIに送信します。</p>
+                            <div class="bg-gray-800 text-gray-200 p-3 rounded text-xs font-mono whitespace-pre-wrap leading-relaxed">1行ずつ、必ずコードの横にコードが何をしているのか、なぜそのコードを書く必要があるのかを小学生でも分かるように//でコメントを書いて 
+
+（※ここに覚えたいコードを貼る）</div>
+                        </div>
+
+                        <!-- Step 2 -->
+                        <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm">
+                            <p class="font-bold text-gray-800 mb-1"><span class="bg-indigo-600 text-white px-2 py-0.5 rounded text-xs mr-2">Step 2</span>コピペしてスタート</p>
+                            <p class="text-xs text-gray-600">AIが出力してくれたテキストを、このアプリの入力欄に<span class="font-bold text-indigo-600">コピペ</span>して、「<span class="font-bold text-indigo-600">▶ スタート</span>」を押します。</p>
+                        </div>
+
+                        <!-- Step 3 -->
+                        <div class="bg-white border border-gray-200 p-4 rounded-lg shadow-sm">
+                            <p class="font-bold text-gray-800 mb-2"><span class="bg-indigo-600 text-white px-2 py-0.5 rounded text-xs mr-2">Step 3</span>自分のペースで再生・反復学習！</p>
+                            <ul class="list-disc list-inside text-xs space-y-2 text-gray-600 ml-1">
+                                <li><span class="font-bold text-gray-800">任意の場所を聞く：</span> 各行の左側にある「再生ボタン」を押す</li>
+                                <li><span class="font-bold text-gray-800">全体を通して聞く：</span> 上の「連続再生ボタン」を押す</li>
+                                <li><span class="font-bold text-gray-800">苦手な部分を反復：</span> 繰り返したい行の「チェックボックス」を選び、「ループ」にチェックを入れて連続再生！</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- その他の活用例 -->
+                <div>
+                    <h3 class="text-indigo-600 font-bold mb-3 text-base border-b-2 border-indigo-100 inline-block">📚 その他の活用例（IT用語・英会話など）</h3>
+                    <p class="mb-2 text-xs text-gray-600">プログラミング以外にも、単語帳のように「用語 // 説明」を書けばあらゆる分野に使えます。</p>
+                    <div class="bg-gray-50 border border-gray-200 p-3 rounded-lg text-xs space-y-2 font-mono">
+                        <p><span class="font-bold text-gray-800">OS //</span> ハードウェアとアプリを仲介する基本ソフトウェア</p>
+                        <p><span class="font-bold text-gray-800">クラス //</span> オブジェクト指向における「設計図」</p>
+                        <p class="pt-2 border-t border-gray-200"><span class="font-bold text-gray-800">How's it going? //</span> 調子はどう？</p>
+                        <p><span class="font-bold text-gray-800">I'm looking forward to it. //</span> それを楽しみにしています。</p>
+                    </div>
+                </div>
+                
+            </div>
+            <!-- モーダルフッター -->
+            <div class="p-4 border-t border-gray-200 bg-gray-50 text-right">
+                <button onclick="closeHelp()" class="bg-gray-800 hover:bg-gray-900 text-white px-6 py-2 rounded-lg font-bold shadow transition-colors">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- モーダル (使い方ガイド) の制御 ---
+        function openHelp() {
+            const modal = document.getElementById('help-modal');
+            const content = document.getElementById('help-modal-content');
+            modal.classList.remove('hidden');
+            
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+            });
+        }
+
+        function closeHelp() {
+            const modal = document.getElementById('help-modal');
+            const content = document.getElementById('help-modal-content');
+            
+            modal.classList.add('opacity-0');
+            content.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // モーダル背景クリックで閉じる
+        document.getElementById('help-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeHelp();
+        });
+
+
+        // --- 状態管理 ---
+        let parsedLines = [];
+        let currentMode = 'hide-comments';
+        let isAllRevealed = false;
+        
+        // --- 音声合成状態 ---
+        const synth = window.speechSynthesis;
+        let isPlayingSequence = false;
+        let isCancelling = false; 
+        let currentPlayingIndex = -1; 
+        let availableVoices = [];
+
+        function loadVoices() {
+            availableVoices = synth.getVoices();
+        }
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        window.onload = () => {
+            loadVoices();
+
+            // 初期テキスト（初心者や小学生でも分かる基礎的なJavaのコード解説例）
+            document.getElementById('code-input').value = 
+`public class Main { // プログラムを動かすための「メインの部屋」を作るよ！
+    public static void main(String[] args) { // コンピューターが一番最初に読み始めて、動かす場所だよ
+        
+        System.out.println("こんにちは！Javaの世界へようこそ！"); // 画面に「こんにちは！…」という文字を出すよ
+        
+        int apple = 3; // 「apple（リンゴ）」という名前の、数字を入れる箱を用意して、最初は「3」を入れるよ
+        System.out.println("リンゴが" + apple + "個あります。"); // 画面に箱の中身（3）を使って文字を出すよ
+        
+        apple = apple + 2; // リンゴの箱の中身に「2」を足して、また箱に戻す（上書きする）よ
+        System.out.println("2個もらったので、全部で" + apple + "個になりました！"); // 計算したあとの中身（5）を表示するよ
+        
+        if (apple >= 5) { // もし、リンゴの箱の中身が「5」以上だったら…
+            System.out.println("リンゴがいっぱい！みんなで食べよう！"); // こっちの文字を画面に出すよ
+        } else { // そうじゃなかったら（「5」より少なかったら）…
+            System.out.println("まだ足りないね。もっと集めよう！"); // こっちの文字を画面に出すよ
+        } // もしものお話（条件）はここで終わりだよ
+        
+    } // メインの動きはここで終わりだよ
+} // メインの部屋はここまでだよ`;
+        };
+
+        // --- 男性ボイスを取得 ---
+        function getMaleVoice() {
+            if (availableVoices.length === 0) availableVoices = synth.getVoices();
+            const jaVoices = availableVoices.filter(v => v.lang.includes('ja'));
+            if (jaVoices.length === 0) return null;
+            const maleVoice = jaVoices.find(v => /Ichiro|Keita|Otoya|Akira|Male|男/i.test(v.name));
+            return maleVoice || jaVoices[0];
+        }
+
+        // --- テキスト解析機能 ---
+        function parseText(text) {
+            const lines = text.split('\n');
+            const result = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                if (line.trim() === '') continue;
+                
+                let commentIndex = -1;
+                for (let j = 0; j < line.length - 1; j++) {
+                    if (line[j] === '/' && line[j+1] === '/') {
+                        if (j > 0 && line[j-1] === ':') continue; 
+                        commentIndex = j;
+                        break;
+                    }
+                }
+
+                let codePart = '';
+                let commentPart = '';
+
+                if (commentIndex !== -1) {
+                    codePart = line.substring(0, commentIndex).trimEnd();
+                    commentPart = line.substring(commentIndex + 2).trim();
+                } else {
+                    codePart = line.trimEnd();
+                }
+
+                result.push({
+                    code: codePart,
+                    comment: commentPart,
+                    isRevealed: false,
+                    isSelected: false
+                });
+            }
+            return result;
+        }
+
+        // --- スタート処理 ---
+        function parseAndStart() {
+            if (synth) {
+                const dummy = new SpeechSynthesisUtterance('');
+                dummy.volume = 0;
+                synth.speak(dummy);
+            }
+
+            const text = document.getElementById('code-input').value;
+            if (!text.trim()) {
+                alert('テキストを入力してください。');
+                return;
+            }
+
+            parsedLines = parseText(text);
+            isAllRevealed = false;
+            document.getElementById('toggle-all-btn').innerText = 'すべて表示';
+            
+            document.getElementById('viewer-section').classList.remove('hidden');
+            document.getElementById('viewer-section').classList.add('flex');
+            
+            setTimeout(() => {
+                document.getElementById('viewer-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 100);
+
+            renderCards();
+        }
+
+        // --- モード＆表示切替機能 ---
+        function setMode(mode) {
+            currentMode = mode;
+            isAllRevealed = false;
+            document.getElementById('toggle-all-btn').innerText = 'すべて表示';
+            parsedLines.forEach(item => item.isRevealed = false);
+
+            const btnHideCode = document.getElementById('mode-hide-code');
+            const btnHideComments = document.getElementById('mode-hide-comments');
+
+            const activeClass = "flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-bold bg-white shadow-sm text-indigo-600 transition-all";
+            const inactiveClass = "flex-1 md:flex-none px-4 py-2 rounded-md text-sm font-bold text-gray-500 hover:text-gray-800 hover:bg-gray-200 transition-all";
+
+            if (mode === 'hide-comments') {
+                btnHideComments.className = activeClass;
+                btnHideCode.className = inactiveClass;
+            } else {
+                btnHideCode.className = activeClass;
+                btnHideComments.className = inactiveClass;
+            }
+            renderCards();
+        }
+
+        function toggleAllRevealed() {
+            isAllRevealed = !isAllRevealed;
+            parsedLines.forEach(item => item.isRevealed = isAllRevealed);
+            document.getElementById('toggle-all-btn').innerText = isAllRevealed ? 'すべて隠す' : 'すべて表示';
+            renderCards();
+        }
+
+        function toggleReveal(index) {
+            parsedLines[index].isRevealed = !parsedLines[index].isRevealed;
+            renderCards();
+        }
+
+        // --- 選択・選択解除機能 ---
+        function toggleSelection(index, event) {
+            parsedLines[index].isSelected = event.target.checked;
+            const card = document.getElementById(`card-${index}`);
+            if (parsedLines[index].isSelected) {
+                card.classList.remove('border-gray-200');
+                card.classList.add('border-indigo-400');
+            } else {
+                card.classList.remove('border-indigo-400');
+                card.classList.add('border-gray-200');
+            }
+        }
+
+        function clearSelection() {
+            parsedLines.forEach(item => item.isSelected = false);
+            document.querySelectorAll('.row-select-checkbox').forEach(cb => cb.checked = false);
+            document.querySelectorAll('[id^="card-"]').forEach(card => {
+                card.classList.remove('border-indigo-400');
+                card.classList.add('border-gray-200');
+            });
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;')
+                      .replace(/'/g, '&#039;');
+        }
+
+        // --- レンダリング処理 ---
+        function renderCards() {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = '';
+
+            parsedLines.forEach((item, index) => {
+                const hasCode = item.code.trim().length > 0;
+                const hasComment = item.comment.trim().length > 0;
+
+                const maskCode = currentMode === 'hide-code' && hasCode && !item.isRevealed;
+                const maskComment = currentMode === 'hide-comments' && hasComment && !item.isRevealed;
+
+                const card = document.createElement('div');
+                card.id = `card-${index}`;
+                const borderClass = item.isSelected ? 'border-indigo-400' : 'border-gray-200';
+                card.className = `flex flex-col md:flex-row border ${borderClass} rounded-xl overflow-hidden shadow-sm bg-white transition-all`;
+
+                card.innerHTML = `
+                    <div class="bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200 flex flex-row md:flex-col items-center justify-center p-3 gap-3 md:w-16 shrink-0">
+                        <input type="checkbox" class="row-select-checkbox w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer" 
+                            ${item.isSelected ? 'checked' : ''} onchange="toggleSelection(${index}, event)" title="チェックを入れるとこの行だけ再生・ループの対象になります">
+                        
+                        <button onclick="playLine(${index})" class="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-gray-300 text-indigo-500 hover:bg-indigo-50 hover:text-indigo-700 shadow-sm transition-colors focus:outline-none active:scale-95" title="この行を読み上げる">
+                            <svg class="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M4 4l12 6-12 6z"></path></svg>
+                        </button>
+                    </div>
+
+                    <div class="flex-1 flex flex-col md:flex-row">
+                        <div class="flex-1 p-4 border-b md:border-b-0 md:border-r border-gray-100 relative ${!hasCode ? 'bg-gray-50' : 'bg-white'}">
+                            <pre class="font-mono text-sm text-gray-800 whitespace-pre-wrap break-all leading-relaxed">${hasCode ? escapeHTML(item.code) : '<span class="text-gray-400 italic">（空欄）</span>'}</pre>
+                            
+                            ${maskCode ? `
+                                <div onclick="toggleReveal(${index})" class="absolute inset-0 bg-gray-200/90 backdrop-blur-[2px] flex items-center justify-center cursor-pointer hover:bg-gray-300/90 transition-colors group">
+                                    <span class="bg-white px-4 py-2 rounded-lg shadow-sm text-sm font-bold text-gray-600 group-hover:text-gray-800 flex items-center gap-2">
+                                        ❓ クリックでテキスト(左)を開く
+                                    </span>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <div class="flex-1 p-4 relative ${!hasComment ? 'bg-gray-50' : 'bg-green-50/30'}">
+                            <p class="text-sm font-medium text-gray-700 leading-relaxed break-all">${hasComment ? escapeHTML(item.comment) : '<span class="text-gray-400 italic font-normal">（空欄）</span>'}</p>
+                            
+                            ${maskComment ? `
+                                <div onclick="toggleReveal(${index})" class="absolute inset-0 bg-gray-200/90 backdrop-blur-[2px] flex items-center justify-center cursor-pointer hover:bg-gray-300/90 transition-colors group">
+                                    <span class="bg-white px-4 py-2 rounded-lg shadow-sm text-sm font-bold text-gray-600 group-hover:text-gray-800 flex items-center gap-2">
+                                        ❓ クリックで解説(右)を開く
+                                    </span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- 音声読み上げ機能 ---
+        function highlightCard(index) {
+            document.querySelectorAll('.ring-2.ring-indigo-500').forEach(el => el.classList.remove('ring-2', 'ring-indigo-500'));
+            if(index >= 0) {
+                const card = document.getElementById(`card-${index}`);
+                if(card) {
+                    card.classList.add('ring-2', 'ring-indigo-500');
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+
+        function playLine(index, callback) {
+            if (!isCancelling) synth.cancel(); 
+            
+            currentPlayingIndex = index;
+            const item = parsedLines[index];
+            if (!item) return;
+
+            highlightCard(index);
+
+            let textToRead = "";
+            if (item.code.trim()) textToRead += item.code + "。";
+            if (item.comment.trim()) textToRead += item.comment + "。";
+
+            if (!textToRead.trim()) {
+                if (callback) callback();
+                return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(textToRead);
+            utterance.lang = 'ja-JP';
+            
+            const targetVoice = getMaleVoice();
+            if (targetVoice) utterance.voice = targetVoice;
+
+            const rate = parseFloat(document.getElementById('playback-rate').value);
+            utterance.rate = rate; 
+            utterance.pitch = 1.0;
+
+            utterance.onend = () => {
+                if (isCancelling) return; 
+                highlightCard(-1);
+                if (callback) callback();
+            };
+            
+            utterance.onerror = (e) => {
+                if (isCancelling) return;
+                highlightCard(-1);
+                if (callback) callback();
+            };
+
+            synth.speak(utterance);
+        }
+
+        function getNextIndex(currentIndex) {
+            const hasSelection = parsedLines.some(item => item.isSelected);
+            for (let i = currentIndex + 1; i < parsedLines.length; i++) {
+                if (!hasSelection || parsedLines[i].isSelected) return i;
+            }
+            return -1;
+        }
+
+        function getFirstIndex() {
+            const hasSelection = parsedLines.some(item => item.isSelected);
+            for (let i = 0; i < parsedLines.length; i++) {
+                if (!hasSelection || parsedLines[i].isSelected) return i;
+            }
+            return -1;
+        }
+
+        function playAll(startIndex = -1) {
+            synth.cancel();
+            isPlayingSequence = true;
+            isCancelling = false;
+            
+            currentPlayingIndex = startIndex === -1 ? getFirstIndex() : startIndex;
+
+            function next() {
+                if (!isPlayingSequence || isCancelling) {
+                    highlightCard(-1);
+                    return;
+                }
+
+                if (currentPlayingIndex === -1 || currentPlayingIndex >= parsedLines.length) {
+                    const loopCheckbox = document.getElementById('loop-toggle');
+                    if (loopCheckbox && loopCheckbox.checked) {
+                        currentPlayingIndex = getFirstIndex();
+                        if (currentPlayingIndex === -1) {
+                            isPlayingSequence = false;
+                            highlightCard(-1);
+                            return;
+                        }
+                    } else {
+                        isPlayingSequence = false;
+                        highlightCard(-1);
+                        return;
+                    }
+                }
+                
+                playLine(currentPlayingIndex, () => {
+                    if (isCancelling) return;
+                    currentPlayingIndex = getNextIndex(currentPlayingIndex);
+                    setTimeout(() => {
+                        if (!isPlayingSequence || isCancelling) return;
+                        next();
+                    }, 500);
+                });
+            }
+            
+            next();
+        }
+
+        function stopPlay() {
+            isPlayingSequence = false;
+            isCancelling = true;
+            synth.cancel();
+            highlightCard(-1);
+            setTimeout(() => { isCancelling = false; }, 400);
+        }
+
+        document.getElementById('playback-rate').addEventListener('change', () => {
+            if (synth.speaking || synth.pending) {
+                const wasPlayingAll = isPlayingSequence;
+                const targetIndex = currentPlayingIndex;
+                
+                stopPlay(); 
+                
+                setTimeout(() => {
+                    isCancelling = false; 
+                    if (wasPlayingAll && targetIndex >= 0) {
+                        playAll(targetIndex);
+                    } else if (targetIndex >= 0) {
+                        playLine(targetIndex);
+                    }
+                }, 400);
+            }
+        });
+    </script>
+</body>
+</html>
